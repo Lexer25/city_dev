@@ -184,7 +184,6 @@ if($deviceInfo->onLine) {
     echo '<span class="hidden">' . $test_value . '</span>';
     echo Form::checkbox('', 1, $deviceInfo->isTest == true, array('disabled'=>'disabled'));
     echo $deviceInfo->isTest ? ' Да' : ' Нет';
-    echo '</tr>';
 } else {
     echo '<td data-value="-">-</td>';
 }
