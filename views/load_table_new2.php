@@ -11,7 +11,25 @@ $(document).ready(function() {
         $('#check_all3').prop('checked', allChecked);
     });
 });
-</script><div class="panel panel-primary">
+</script>
+<script type="text/javascript">
+$(document).ready(function() {
+    $("#tablesorter").tablesorter({
+        sortList: [[1,0]],
+        headers: {
+            0: { sorter: false, filter: false },
+            20: { sorter: false, filter: false }
+        },
+        widgets: ['zebra', 'filter'],
+        widgetOptions: {
+            filter_reset: '.reset-filter',
+            filter_searchDelay: 300,
+            filter_placeholder: { search: 'Поиск...' }
+        }
+    });
+});
+</script>
+<div class="panel panel-primary">
   <div class="panel-heading">
     <h3 class="panel-title"><?php echo __('device_panel_title').' '.date('Y-m-d H:i:s')?></h3>
   </div>
@@ -64,13 +82,20 @@ $(document).ready(function() {
 			?>
 			
 		</tr>
-		<tr>
-			<?php for ($i=1; $i<22; $i++){
-				echo '<th>'.$i.'</th>';
-				
+		
+		<!-- Строка фильтров для tablesorter -->
+		<tr class="tablesorter-filter-row">
+			<td class="filter-false">
+				<!-- Без фильтра для колонки "Выделить" -->
+			</td>
+			<?php
+			// Колонки 1-19 (индексы 1-19) получают текстовые фильтры
+			for ($i = 1; $i <= 19; $i++) {
+				echo '<td><input type="text" placeholder="' . __('Поиск...') . '" class="form-control input-sm" /></td>';
 			}
+			// Колонка 20 (collectAlarm) - без фильтра
+			echo '<td class="filter-false"></td>';
 			?>
-			
 		</tr>
 	
 		</thead>
