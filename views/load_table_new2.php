@@ -1,5 +1,20 @@
 <script type="text/javascript">
 $(document).ready(function() {
+    var $table = $("#tablesorter");
+    $table.tablesorter({
+        theme: 'blue',
+        headers: {
+            0: { sorter: false, filter: false },
+            19: { sorter: false, filter: false },
+        },
+        widgets: ['zebra', 'filter'],
+        widgetOptions: {
+            filter_reset: '.reset-filter',
+            filter_searchDelay: 300,
+            filter_placeholder: { search: 'Поиск...' }
+        }
+    });
+    
     // Выделить все
     $('#check_all3').change(function() {
         $('input[name^="id_dev["]').prop('checked', $(this).prop('checked'));
