@@ -16,5 +16,10 @@ Kohana::$config->load('menu')
         'url' => 'dev/load',
         'icon' => 'fa-cog',
         'order' => 9,
+         'show' => array(
+            //'logged_in' => true  // Только для авторизованных
+            'roles' => array('admin', 'moderator')  // Доступно для админов и модераторов
+        ),
+		
        
     ));
