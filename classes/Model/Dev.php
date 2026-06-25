@@ -99,6 +99,7 @@ class Model_Dev extends Model
 	
 	public function getCardidxStat()
 	{
+		$result=array();
 		$sql='select cdx.id_dev, count(*) from cardidx cdx
 		group by cdx.id_dev';
 		$query = DB::query(Database::SELECT, iconv('UTF-8', 'CP1251',$sql))
