@@ -4,7 +4,7 @@ class Controller_Dev extends Controller_Template {
    public $template = 'template';
    //Широки шаблон
    //для использьвания необходимо указать 
-   //$this->template = View::factory($this->template_width);
+   //$this->set_full_width(true);
    public $template_width = 'template';
    
   	
@@ -23,11 +23,9 @@ class Controller_Dev extends Controller_Template {
 	
 	public function action_load() //таблица загрузки контроллеров
 	{
-        $_SESSION['menu_active']='load';
-	
-		//$this->template = View::factory($this->template_width);
-		$this->template->full_width = true;
-				
+      
+		$this->set_full_width(true);
+		
 		if(array_key_exists('browser',$_POST)) $_SESSION['brows']=Arr::get($_POST, 'browser');
 		
 		
@@ -38,8 +36,7 @@ class Controller_Dev extends Controller_Template {
 			'date_stat' => $date_stat,
 			
 					));
-		
-        $this->template->content = $dataListView;
+	        $this->template->content = $dataListView;
         //echo View::factory('profiler/stats');
 	}
 	
