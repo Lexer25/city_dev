@@ -57,7 +57,7 @@ class Controller_Dev extends Controller_Template {
 		
 		$b=Model::Factory('Stat')->load_order(); // вывод очереди карт на загрузку
 		//$c=Model::Factory('Stat')->load_order_overcount(); // вывод очереди карт на загрузку с превышенным количеством попыток
-		//echo Debug::vars('221', $b); exit;
+		
 		$c=array();
 		$content = View::factory('order_table', array(
 			'list' => $b,
@@ -110,7 +110,7 @@ class Controller_Dev extends Controller_Template {
 	{
 		$_SESSION['menu_active']='device_control';
 		
-		//echo Debug::vars('144', $_POST); exit;
+		echo Debug::vars('144', $_POST); exit;
 		$res='';
 		if(array_key_exists('checkStateDoor',$_POST)){ // опрос состояния контроллеров
 				

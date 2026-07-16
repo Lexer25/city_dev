@@ -39,63 +39,146 @@ class Model_Dev extends Model
 		return $query;
 	}
 	
-	public function getDataList()
-	{
-		$getCardidxStat=$this->getCardidxStat();
-		foreach ($this->getDevDataDetail() as $key => $value)//для каждой точки прохода набираю данные
-		{
+public function getDataList()
+{
+    $getCardidxStat = $this->getCardidxStat();
+    $result = array();
+    
+    // Получаем информацию о планах
+    $floorplanData = $this->getFloorplanDevices();
+    $floorplanDevices = Arr::get($floorplanData, 'devices', array());
+    $floorplanStatus = Arr::get($floorplanData, 'status', 'error');
+    $floorplanMessage = Arr::get($floorplanData, 'message', '');
+    
+    foreach ($this->getDevDataDetail() as $key => $value) {
+        $deviceInfo = new DeviceInfo(Arr::get($value, 'ID_DEV'), Arr::get($value, 'facts2'));
+        $deviceInfo->isBlocked = false;
+        $deviceInfo->isAlarm = false;
+        
+        $deviceInfo->id = Arr::get($value, 'ID_DEV');
+        
+        if (Arr::get($value, 'ID_READER') == 0) {
+            if (Arr::get($deviceInfo->inputPortState, 2) == 0) $deviceInfo->isBlocked = true;
+            if (Arr::get($deviceInfo->inputPortState, 3) == 0) $deviceInfo->isAlarm = true;
+            $deviceInfo->keyCount_reader = Arr::get($deviceInfo->keyCount, 0);
+            $deviceInfo->doorMode = $deviceInfo->doorMode_0;
+        }
+        
+        if (Arr::get($value, 'ID_READER') == 1) {
+            if (Arr::get($deviceInfo->inputPortState, 6) == 0) $deviceInfo->isBlocked = true;
+            if (Arr::get($deviceInfo->inputPortState, 7) == 0) $deviceInfo->isAlarm = true;
+            $deviceInfo->keyCount_reader = Arr::get($deviceInfo->keyCount, 1);
+            $deviceInfo->doorMode = $deviceInfo->doorMode_1;
+        }
+        
+        $deviceInfo->id = Arr::get($value, 'ID_DEV');
+        $deviceInfo->ip = Arr::get($value, 'NETADDR');
+        $deviceInfo->id_dev = $deviceInfo->id;
+        $deviceInfo->name = Arr::get($value, 'NAME');
+        $deviceInfo->parentid = Arr::get($value, 'PARENTID');
+        $deviceInfo->parentname = Arr::get($value, 'PARENTNAME');
+        $deviceInfo->servername = Arr::get($value, 'SERVERNAME');
+        $deviceInfo->active = Arr::get($value, 'ACTIVE');
+        $deviceInfo->devtypename = Arr::get($value, 'DEVTYPENAME');
+        $deviceInfo->id_reader = Arr::get($value, 'ID_READER');
+        $deviceInfo->doorname = Arr::get($value, 'DOORNAME');
+        $deviceInfo->countDataBase = Arr::get($getCardidxStat, $deviceInfo->id);
+        
+        // Флаг наличия на плане
+        $deviceInfo->hasFloorplan = in_array($deviceInfo->id, $floorplanDevices);
+        
+        // Статус модуля floorplan
+        $deviceInfo->floorplanStatus = $floorplanStatus;
+        $deviceInfo->floorplanMessage = $floorplanMessage;
+        
+        $result[] = $deviceInfo;
+    }
+    
+    return $result;
+}
 
-			$deviceInfo=new DeviceInfo(Arr::get($value, 'ID_DEV'), Arr::get($value, 'facts2'));//набор данных из статистики
-			//echo Debug::vars('49', $value);
-			//echo Debug::vars('50', $deviceInfo);exit;
-			$deviceInfo->isBlocked = false;
-			$deviceInfo->isAlarm = false;
+		/**
+		 * Получение списка устройств, которые есть на плане
+		 */
+		private function getFloorplanDevices()
+		{
+			try {
+				// 1. Проверяем, установлен ли модуль floorplan
+				if (!$this->isFloorplanModuleAvailable()) {
+					Log::instance()->add(Log::DEBUG, 'Модуль floorplan не загружен');
+					return array(
+						'status' => 'disabled',
+						'message' => 'Модуль "Планы этажей" отключен',
+						'devices' => array()
+					);
+				}
 				
+				// 2. Проверяем существование таблицы FLOORPLAN_POINT
+				$sql = "SELECT 1 FROM RDB\$RELATIONS WHERE RDB\$RELATION_NAME = 'FLOORPLAN_POINT'";
+				$tableExists = DB::query(Database::SELECT, $sql)
+					->execute(Database::instance('fb'))
+					->count();
 				
-			$deviceInfo->id = Arr::get($value, 'ID_DEV');
-			if(Arr::get($value, 'ID_READER') ==0){
+				if ($tableExists == 0) {
+					return array(
+						'status' => 'no_table',
+						'message' => 'Таблица планов этажей не найдена',
+						'devices' => array()
+					);
+				}
 				
-				if(Arr::get($deviceInfo->inputPortState, 2) == 0) $deviceInfo->isBlocked = true;
-				if(Arr::get($deviceInfo->inputPortState, 3) ==0 ) $deviceInfo->isAlarm = true;
-				$deviceInfo->keyCount_reader=Arr::get($deviceInfo->keyCount, 0);
-				$deviceInfo->doorMode=$deviceInfo->doorMode_0;
+				// 3. Получаем список устройств
+				$sql = "SELECT id_dev FROM FLOORPLAN_POINT";
+				$query = DB::query(Database::SELECT, $sql)
+					->execute(Database::instance('fb'))
+					->as_array();
 				
+				$result = array();
+				foreach ($query as $row) {
+					$result[] = Arr::get($row, 'ID_DEV');
+				}
+				
+				return array(
+					'status' => 'ok',
+					'message' => 'OK',
+					'devices' => $result
+				);
+				
+			} catch (Exception $e) {
+				Log::instance()->add(Log::ERROR, 'Ошибка получения списка устройств на плане: ' . $e->getMessage());
+				return array(
+					'status' => 'error',
+					'message' => 'Ошибка: ' . $e->getMessage(),
+					'devices' => array()
+				);
+			}
+		}
+
+		/**
+		 * Проверка доступности модуля floorplan
+		 * 
+		 * @return bool
+		 */
+		private function isFloorplanModuleAvailable()
+		{
+			// Проверяем, загружен ли модуль в Kohana
+			$modules = Kohana::modules();
+			if (!isset($modules['floorplan'])) {
+				return false;
 			}
 			
-			//построение данных для канала 1
-			if(Arr::get($value, 'ID_READER') ==1){
-				
-				if(Arr::get($deviceInfo->inputPortState, 6) == 0) $deviceInfo->isBlocked = true;
-				if(Arr::get($deviceInfo->inputPortState, 7) == 0) $deviceInfo->isAlarm = true;
-				$deviceInfo->keyCount_reader=Arr::get($deviceInfo->keyCount, 1);
-				$deviceInfo->doorMode=$deviceInfo->doorMode_1;
-				
+			// Проверяем, существует ли папка модуля
+			if (!is_dir(MODPATH . 'floorplan')) {
+				return false;
 			}
-		//	echo Debug::vars('51', $value);exit;
-		 $deviceInfo->id = Arr::get($value, 'ID_DEV');
-		 $deviceInfo->ip = Arr::get($value, 'NETADDR');
-		 $deviceInfo->id_dev = $deviceInfo->id;
-		 $deviceInfo->name = Arr::get($value, 'NAME');
-         $deviceInfo->parentid = Arr::get($value, 'PARENTID');
-         $deviceInfo->parentname = Arr::get($value, 'PARENTNAME');
-         $deviceInfo->parentid = Arr::get($value, 'PARENTID');
-        
-		$deviceInfo->servername = Arr::get($value, 'SERVERNAME');
-		$deviceInfo->active = Arr::get($value, 'ACTIVE');
-		$deviceInfo->devtypename = Arr::get($value, 'DEVTYPENAME');
-		$deviceInfo->id_reader = Arr::get($value, 'ID_READER');
-		$deviceInfo->doorname = Arr::get($value, 'DOORNAME');
-		
-		$deviceInfo->countDataBase = Arr::get($getCardidxStat, $deviceInfo->id);
-        
-		//echo Debug::vars('68', $deviceInfo);exit;	
-			$result[]=$deviceInfo;
-		}
-		
-		
-		return $result;
-	}
-	
+			
+			// Проверяем, существует ли контроллер
+			if (!class_exists('Controller_Floorplan')) {
+				return false;
+			}
+			
+			return true;
+		}	
 	
 	public function getCardidxStat()
 	{
@@ -166,6 +249,35 @@ class Model_Dev extends Model
 	
 	}
 	
+	
+	// В модели Model_Dev или Model_Floorplan
+public function checkDeviceOnFloorplan($id_dev)
+{
+    // Проверяем, существует ли таблица floorplan
+    try {
+        $sql = "SELECT 1 FROM RDB\$RELATIONS WHERE RDB\$RELATION_NAME = 'FLOORPLAN_DEVICES'";
+        $tableExists = DB::query(Database::SELECT, $sql)
+            ->execute(Database::instance('fb'))
+            ->count();
+        
+        if ($tableExists == 0) {
+            return false; // Таблица не существует
+        }
+        
+        // Проверяем, есть ли устройство на плане
+        $sql = "SELECT COUNT(*) as cnt FROM floorplan_devices WHERE id_dev = :id_dev";
+        $result = DB::query(Database::SELECT, $sql)
+            ->param(':id_dev', $id_dev)
+            ->execute(Database::instance('fb'))
+            ->as_array();
+        
+        return Arr::get($result[0], 'CNT', 0) > 0;
+        
+    } catch (Exception $e) {
+        Log::instance()->add(Log::ERROR, 'Ошибка проверки floorplan_devices: ' . $e->getMessage());
+        return false;
+    }
+}
 }
 	
 

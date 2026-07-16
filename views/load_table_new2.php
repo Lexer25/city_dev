@@ -56,14 +56,16 @@ $(document).ready(function() {
                     <?php
                     echo '<th>'.__('SERVER_NAME').'</th>';
                     echo '<th>'.__('DEVICE_NAME').'</th>';
-                    // КОЛОНКА 3 - С ВЫПАДАЮЩИМ СПИСКОМ (через класс)
-	echo '<th class="filter-select" data-placeholder="Все">'.__('DEVICE_IsActive').'</th>';
+                    echo '<th class="filter-select" data-placeholder="Все">'.__('DEVICE_IsActive').'</th>';
                     echo '<th>'.__('DEVICE_TYPE').'</th>';
                     echo '<th>'.__('IP').'</th>';
 	echo '<th class="filter-select" data-placeholder="Все">'.__('isOnLine').'</th>';
 	echo '<th class="filter-select" data-placeholder="Все">'.__('isWp').'</th>';
 	echo '<th class="filter-select" data-placeholder="Все">'.__('isTest').'</th>';
                     echo '<th>'.__('DOOR_NAME').'</th>';
+                   // Одна колонка с фильтром
+echo '<th class="filter-select" data-placeholder="Все">'.__('on_plane').'</th>';			
+					
                     echo '<th>'.__('DEVICE_VERSION').'</th>';
                     echo '<th>'.__('SCUD_MODE').'</th>';
                     echo '<th>'.__('BASE_COUNT').'</th>';
@@ -188,8 +190,54 @@ if($deviceInfo->onLine) {
     echo '<td data-value="-">-</td>';
 }
                 
-                // Колонка 9 - DOOR_NAME
-                echo '<td>'.$deviceInfo->id_dev.' '.HTML::anchor('door/doorInfo/'.$deviceInfo->id_dev, iconv('CP1251', 'UTF-8', $deviceInfo->name)).'</td>';
+					// Колонка 9 - DOOR_NAME
+					echo '<td>';
+						echo $deviceInfo->id_dev.' '.HTML::anchor('door/doorInfo/'.$deviceInfo->id_dev, iconv('CP1251', 'UTF-8', $deviceInfo->name));
+												
+					echo '</td>';
+					
+					
+					
+						
+// Показываем иконку только если устройство есть на плане
+// Колонка - on_plane (с текстом для фильтра)
+// Колонка - on_plane
+echo '<td>';
+    // Проверяем статус модуля floorplan
+    if ($deviceInfo->floorplanStatus == 'disabled') {
+        // Модуль отключен - показываем серую иконку с подсказкой
+        echo '<span class="glyphicon glyphicon-ban-circle" style="color: #999;" title="Модуль планов отключен"></span>';
+        echo ' <span style="color: #999; font-size: 11px;">Отключен</span>';
+    } elseif ($deviceInfo->floorplanStatus == 'no_table') {
+        // Таблица не существует
+        echo '<span class="glyphicon glyphicon-exclamation-sign" style="color: #f0ad4e;" title="Таблица планов не найдена"></span>';
+        echo ' <span style="color: #f0ad4e; font-size: 11px;">Нет таблицы</span>';
+    } elseif ($deviceInfo->floorplanStatus == 'error') {
+        // Ошибка
+        echo '<span class="glyphicon glyphicon-remove-sign" style="color: #d9534f;" title="' . $deviceInfo->floorplanMessage . '"></span>';
+        echo ' <span style="color: #d9534f; font-size: 11px;">Ошибка</span>';
+    } else {
+        // Модуль работает - показываем иконку плана
+        echo '<span class="hidden">' . ($deviceInfo->hasFloorplan ? '1' : '0') . '</span>';
+        
+        if ($deviceInfo->hasFloorplan) {
+            echo HTML::anchor('floorplan/view/1?id_dev='.$deviceInfo->id_dev, 
+                '<span class="glyphicon glyphicon-map-marker" style="color: #5cb85c; font-size: 16px;" title="Показать на плане"></span>', 
+                array(
+                    'target' => '_blank',
+                    'style' => 'text-decoration: none; margin-left: 3px;',
+                    'title' => 'Показать на плане'
+                )
+            );
+            echo ' <span style="color: #5cb85c; font-size: 11px;">На плане</span>';
+        } else {
+            echo '<span class="glyphicon glyphicon-map-marker" style="color: #ddd; font-size: 16px;" title="Не размещен на плане"></span>';
+            echo ' <span style="color: #999; font-size: 11px;">Не на плане</span>';
+        }
+    }
+echo '</td>';
+					
+					
                 
                 // Колонка 10 - DEVICE_VERSION
                 echo '<td>'.$deviceInfo->softVersion.'</td>';
