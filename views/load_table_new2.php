@@ -221,7 +221,7 @@ echo '<td>';
         echo '<span class="hidden">' . ($deviceInfo->hasFloorplan ? '1' : '0') . '</span>';
         
         if ($deviceInfo->hasFloorplan) {
-            echo HTML::anchor('floorplan/view/1?id_dev='.$deviceInfo->id_dev, 
+            echo HTML::anchor('floorplan/findDevice?id_dev='.$deviceInfo->id_dev, 
                 '<span class="glyphicon glyphicon-map-marker" style="color: #5cb85c; font-size: 16px;" title="Показать на плане"></span>', 
                 array(
                     'target' => '_blank',
