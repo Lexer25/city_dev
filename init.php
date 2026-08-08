@@ -18,7 +18,7 @@ Kohana::$config->load('menu')
         'order' => 9,
          'show' => array(
             //'logged_in' => true  // Только для авторизованных
-            'roles' => array('admin', 'moderator')  // Доступно для админов и модераторов
+            //'roles' => array('admin', 'moderator')  // Доступно для админов и модераторов
         ),
 		
        
