@@ -53,7 +53,7 @@ class Controller_Dev extends Controller_Template {
 		$errArrForDevice=$this->getErrArrForDevice();//список ошибок при записи
 	//echo Debug::vars('205', $errArrForDevice); exit;	
 		$b=array();
-		$c=array();
+		//$c=array();
 		
 		$b=Model::Factory('Stat')->load_order(); // вывод очереди карт на загрузку
 		//$c=Model::Factory('Stat')->load_order_overcount(); // вывод очереди карт на загрузку с превышенным количеством попыток
@@ -110,7 +110,9 @@ class Controller_Dev extends Controller_Template {
 	{
 		$_SESSION['menu_active']='device_control';
 		
-		echo Debug::vars('144', $_POST); exit;
+		// Логируем для отладки
+		Log::instance()->add(Log::ERROR, 'Нереализованный вызов device_control: ' . print_r($_POST, true));
+		throw new Exception('Действие не реализовано в текущей версии');
 		$res='';
 		if(array_key_exists('checkStateDoor',$_POST)){ // опрос состояния контроллеров
 				
