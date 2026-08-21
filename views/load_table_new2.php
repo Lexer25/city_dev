@@ -113,7 +113,7 @@ echo '<th class="filter-select" data-placeholder="Все">'.__('on_plane').'</th
                 echo '<td>'. iconv('CP1251', 'UTF-8', $deviceInfo->servername).'</td>';
                 
                 // Колонка 2 - DEVICE_NAME
-                echo '<td>'.$deviceInfo->parentid . ' ' . HTML::anchor('device/deviceinfo/'.$deviceInfo->parentid, iconv('windows-1251','UTF-8', $deviceInfo->parentname)).'</td>';
+                echo '<td>'.$deviceInfo->parentid . ' ' . HTML::anchor('devices/edit/'.$deviceInfo->parentid, iconv('windows-1251','UTF-8', $deviceInfo->parentname)).'</td>';
                 
                 // КОЛОНКА 3 - DEVICE_IsActive (с data-value для select фильтра)
                 echo '<td data-value="' . ($deviceInfo->active == 1 ? '1' : '0') . '">';
