@@ -379,7 +379,7 @@ if($deviceInfo->onLine) {
         </table>
         
         <br><br><br><br><br><br><br>
-        
+        <!-- блок кнопок в нижней части экрана -->
         <nav class="navbar navbar-default navbar-fixed-bottom disable" role="navigation">
             <div class="container">
                 <button type="submit" class="btn btn-primary sm" name="synctime" value="1" title="Синхронизация времени в контроллерах"><?php echo __('synctime_dev'); ?></button>
@@ -387,8 +387,9 @@ if($deviceInfo->onLine) {
                 <button type="submit" class="btn btn-danger sm" name="clear_device" value="1" title="Удалить карты из выбранных точек прохода"><?php echo __('clear_device'); ?></button>
                 <button type="submit" class="btn btn-danger sm" name="load_card" value="1" title="Загрузить карты в выбранные точки прохода"><?php echo __('load_card'); ?></button>
                 <button type="submit" class="btn btn-success sm" name="checkStatus" value="1" title="Чтение состояния и запись данных в базу данных."><?php echo __('checkStatus'); ?></button>
-                <button type="submit" class="btn btn-warning sm" name="readkey" value="1" title="Вычитка карт из точки прохода и запись в файл"><?php echo __('Comparekey'); ?></button>
-                <button type="submit" class="btn btn-warning sm" name="cardidx_refresh" value="1" title="cardidx_refresh"><?php echo __('cardidx_refresh'); ?></button>
+               <!-- <button type="submit" class="btn btn-warning sm" name="readkey" value="1" title="Вычитка карт из точки прохода и запись в файл"><?php echo __('Comparekey'); ?></button>-->
+                <br>
+				<button type="submit" class="btn btn-warning sm" name="cardidx_refresh" value="1" title="cardidx_refresh"><?php echo __('cardidx_refresh'); ?></button>
                 
                 <?php 
                 echo Form::button('control_door', 'Разблокировать', array('value'=>'unlockdoor', 'class'=>'btn btn-warning', 'type' => 'submit'));
