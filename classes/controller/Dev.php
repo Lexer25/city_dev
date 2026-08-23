@@ -111,8 +111,8 @@ class Controller_Dev extends Controller_Template {
 		$_SESSION['menu_active']='device_control';
 		
 		// Логируем для отладки
-		Log::instance()->add(Log::ERROR, 'Нереализованный вызов device_control: ' . print_r($_POST, true));
-		throw new Exception('Действие не реализовано в текущей версии');
+		
+		
 		$res='';
 		if(array_key_exists('checkStateDoor',$_POST)){ // опрос состояния контроллеров
 				
@@ -152,9 +152,9 @@ class Controller_Dev extends Controller_Template {
 				Log::instance()->add(Log::NOTICE, 'Synctime for device :user', array(
 					'user' => implode(",",$id_dev),
 				));
-				
-				
+
 				$res=$res.Model::Factory('Device')->synctime($id_dev);
+
 				
 		}
 		
@@ -535,7 +535,7 @@ class Controller_Dev extends Controller_Template {
 		$resultMessages[]=$res;
 		Session::instance()->set('res',$resultMessages);
 		
-		$content = View::factory('result', array(
+		$content = View::factory('dashboard/result', array(
 			'content' => $res,
 		));
 		
