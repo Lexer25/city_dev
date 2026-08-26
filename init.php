@@ -1,5 +1,5 @@
 <?php defined('SYSPATH') or die('No direct script access.');
-defined('DEV_VERSION') OR define('DEV_VERSION', '2.1.2');
+defined('DEV_VERSION') OR define('DEV_VERSION', '2.1.3');
 
 Kohana::$config->load('menu')
     ->set('dev', array(

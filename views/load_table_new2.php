@@ -403,3 +403,88 @@ if($deviceInfo->onLine) {
         <?php echo Form::close(); ?>
     </div>
 </div>
+<script type="text/javascript">
+document.addEventListener('DOMContentLoaded', function() {
+    // Добавляем кнопку
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-success';
+    btn.id = 'exportCsvBtn';
+    btn.style.margin = '5px';
+    btn.innerHTML = '<span class="glyphicon glyphicon-export"></span> Экспорт в CSV';
+    
+    var container = document.querySelector('.container');
+    if (container) {
+        container.appendChild(btn);
+    }
+    
+    btn.addEventListener('click', function() {
+        exportTableToCSV('devices_export_' + getDateString() + '.csv');
+    });
+});
+
+function getDateString() {
+    var d = new Date();
+    return d.getFullYear() + '-' + 
+           String(d.getMonth()+1).padStart(2,'0') + '-' + 
+           String(d.getDate()).padStart(2,'0') + '_' +
+           String(d.getHours()).padStart(2,'0') + '-' +
+           String(d.getMinutes()).padStart(2,'0');
+}
+
+function exportTableToCSV(filename) {
+    var table = document.getElementById('tablesorter');
+    if (!table) {
+        alert('Таблица не найдена');
+        return;
+    }
+    
+    var rows = table.querySelectorAll('tbody tr');
+    if (rows.length === 0) {
+        alert('Нет данных для экспорта');
+        return;
+    }
+    
+    // Заголовки
+    var headers = [];
+    var ths = table.querySelectorAll('thead tr th');
+    ths.forEach(function(th) {
+        var text = th.textContent.trim();
+        if (text === '' || text === 'Выделить') text = 'Выбрать';
+        headers.push(text);
+    });
+    
+    // Данные
+    var data = [];
+    rows.forEach(function(tr) {
+        var row = [];
+        var tds = tr.querySelectorAll('td');
+        tds.forEach(function(td) {
+            var value = td.textContent.trim().replace(/\s+/g, ' ');
+            row.push(value);
+        });
+        data.push(row);
+    });
+    
+    // Формируем CSV
+    var csv = '\uFEFF'; // BOM
+    csv += headers.join(';') + '\n';
+    
+    data.forEach(function(row) {
+        var escaped = row.map(function(cell) {
+            if (cell.includes(';') || cell.includes('"') || cell.includes('\n')) {
+                return '"' + cell.replace(/"/g, '""') + '"';
+            }
+            return cell;
+        });
+        csv += escaped.join(';') + '\n';
+    });
+    
+    // Скачиваем
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+}
+</script>
