@@ -206,15 +206,27 @@ public function getDataList()
 	{
 	//массив точек прохода
 	$result=array();
-	$sql='select d.id_dev, d.id_devtype, dt.name as devTypename, d.id_reader, d.name, d2.netaddr, d."ACTIVE", d2.id_dev as parentId, d2.name as parentName,  s.id_server, s.name as serverName, std.facts as dbCount from device d
-        join device d2 on d2.id_ctrl=d.id_ctrl and d2.id_reader is null
-        join devtype dt on d2.id_devtype=dt.id_devtype
-        left join server s on d2.id_server=s.id_server
-        left join st_data std on d.id_dev=std.id_dev and std.id_param in (8)
-        where d.id_reader is not null
-        order by d.id_dev';
 	
-	
+			$sql='SELECT 
+			d.id_dev,
+			d.id_devtype,
+			dt.name AS devTypename,
+			d.id_reader,
+			d.name,
+			d2.netaddr,
+			d."ACTIVE" * d2."ACTIVE" AS "ACTIVE",  -- òîëüêî åñëè INTEGER
+			d2.id_dev AS parentId,
+			d2.name AS parentName,
+			s.id_server,
+			s.name AS serverName,
+			std.facts AS dbCount
+		FROM device d
+		JOIN device d2 ON d2.id_ctrl = d.id_ctrl AND d2.id_reader IS NULL
+		JOIN devtype dt ON d2.id_devtype = dt.id_devtype
+		LEFT JOIN server s ON d2.id_server = s.id_server
+		LEFT JOIN st_data std ON d.id_dev = std.id_dev AND std.id_param = 8
+		WHERE d.id_reader IS NOT NULL
+		ORDER BY d.id_dev';
 	
 	$query = DB::query(Database::SELECT, $sql)
 					->execute(Database::instance('fb'))
