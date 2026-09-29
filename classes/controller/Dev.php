@@ -24,7 +24,9 @@ class Controller_Dev extends Controller_Template {
 	public function action_load() //таблица загрузки контроллеров
 	{
       
-		$this->set_full_width(true);
+		if (method_exists($this, 'set_full_width')) {
+			$this->set_full_width(true);
+		}
 		
 		if(array_key_exists('browser',$_POST)) $_SESSION['brows']=Arr::get($_POST, 'browser');
 		

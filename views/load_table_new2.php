@@ -14,39 +14,132 @@ $(document).ready(function() {
             filter_placeholder: { search: 'Поиск...' }
         }
     });
-    
+
     // Выделить все
     $('#check_all3').change(function() {
         $('input[name^="id_dev["]').prop('checked', $(this).prop('checked'));
     });
-    
+
     // Обновление состояния чекбокса "Выделить все"
     $('input[name^="id_dev["]').change(function() {
         var allChecked = $('input[name^="id_dev["]').length === $('input[name^="id_dev["]:checked').length;
         $('#check_all3').prop('checked', allChecked);
     });
+
+    // === Кнопка "Экспорт в CSV" ===
+    initExportButton();
 });
+
+function initExportButton() {
+    if (document.getElementById('exportCsvBtn')) return; // уже создана
+
+    var container = document.getElementById('export-button-place');
+    if (!container) {
+        if (window.console) console.warn('export-button-place не найден в DOM');
+        return;
+    }
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-success';
+    btn.id = 'exportCsvBtn';
+    btn.style.margin = '5px';
+    btn.innerHTML = '<span class="glyphicon glyphicon-export"></span> Экспорт в CSV';
+    btn.addEventListener('click', function() {
+        exportTableToCSV('devices_export_' + getDateString() + '.csv');
+    });
+
+    container.appendChild(btn);
+}
+
+function getDateString() {
+    var d = new Date();
+    return d.getFullYear() + '-' +
+           String(d.getMonth()+1).padStart(2,'0') + '-' +
+           String(d.getDate()).padStart(2,'0') + '_' +
+           String(d.getHours()).padStart(2,'0') + '-' +
+           String(d.getMinutes()).padStart(2,'0');
+}
+
+function exportTableToCSV(filename) {
+    var table = document.getElementById('tablesorter');
+    if (!table) {
+        alert('Таблица не найдена');
+        return;
+    }
+
+    var rows = table.querySelectorAll('tbody tr');
+    if (rows.length === 0) {
+        alert('Нет данных для экспорта');
+        return;
+    }
+
+    // Заголовки
+    var headers = [];
+    var ths = table.querySelectorAll('thead tr th');
+    ths.forEach(function(th) {
+        var text = th.textContent.trim();
+        if (text === '' || text === 'Выделить') text = 'Выбрать';
+        headers.push(text);
+    });
+
+    // Данные
+    var data = [];
+    rows.forEach(function(tr) {
+        var row = [];
+        var tds = tr.querySelectorAll('td');
+        tds.forEach(function(td) {
+            var value = td.textContent.trim().replace(/\s+/g, ' ');
+            row.push(value);
+        });
+        data.push(row);
+    });
+
+    // Формируем CSV
+    var csv = '\uFEFF'; // BOM для корректного открытия в Excel
+    csv += headers.join(';') + '\n';
+
+    data.forEach(function(row) {
+        var escaped = row.map(function(cell) {
+            if (cell.includes(';') || cell.includes('"') || cell.includes('\n')) {
+                return '"' + cell.replace(/"/g, '""') + '"';
+            }
+            return cell;
+        });
+        csv += escaped.join(';') + '\n';
+    });
+
+    // Скачиваем
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+}
 </script>
 
 <div class="panel panel-primary">
     <div class="panel-heading">
         <h3 class="panel-title"><?php echo __('device_panel_title').' '.date('Y-m-d H:i:s'); ?></h3>
     </div>
-    
+
     <div class="panel-body">
         <div class="panel panel-danger">
             <div class="panel-body">
-                <?php 
+                <?php
                 echo __('device_panel_title_desc', array('date_from'=>$date_stat['min'], 'date_to'=>$date_stat['max']));
                 ?>
             </div>
         </div>
-        
+
+        <!-- Якорь для кнопки "Экспорт в CSV" — НАД таблицей -->
+        <div id="export-button-place" style="margin: 10px 0;"></div>
+
         <?php
         $t1 = microtime(true);
         echo Form::open('Dev/device_control');
         ?>
-        
+
         <table id="tablesorter" class="table table-striped table-hover table-condensed tablesorter">
             <thead align="center">
                 <tr>
@@ -59,21 +152,19 @@ $(document).ready(function() {
                     echo '<th class="filter-select" data-placeholder="Все">'.__('DEVICE_IsActive').'</th>';
                     echo '<th>'.__('DEVICE_TYPE').'</th>';
                     echo '<th>'.__('IP').'</th>';
-	echo '<th class="filter-select" data-placeholder="Все">'.__('isOnLine').'</th>';
-	echo '<th class="filter-select" data-placeholder="Все">'.__('isWp').'</th>';
-	echo '<th class="filter-select" data-placeholder="Все">'.__('isTest').'</th>';
+                    echo '<th class="filter-select" data-placeholder="Все">'.__('isOnLine').'</th>';
+                    echo '<th class="filter-select" data-placeholder="Все">'.__('isWp').'</th>';
+                    echo '<th class="filter-select" data-placeholder="Все">'.__('isTest').'</th>';
                     echo '<th>'.__('DOOR_NAME').'</th>';
-                   // Одна колонка с фильтром
-echo '<th class="filter-select" data-placeholder="Все">'.__('on_plane').'</th>';			
-					
+                    echo '<th class="filter-select" data-placeholder="Все">'.__('on_plane').'</th>';
                     echo '<th>'.__('DEVICE_VERSION').'</th>';
                     echo '<th>'.__('SCUD_MODE').'</th>';
                     echo '<th>'.__('BASE_COUNT').'</th>';
                     echo '<th>'.__('DEVICE_COUNT').'</th>';
                     echo '<th>'.__('delta_count').'</th>';
                     echo '<th>'.__('DOORSTATE_MODE').'</th>';
-	echo '<th class="filter-select" data-placeholder="Все">'.__('isBlocked').'</th>';
-	echo '<th class="filter-select" data-placeholder="Все">'.__('isAlarm').'</th>';
+                    echo '<th class="filter-select" data-placeholder="Все">'.__('isBlocked').'</th>';
+                    echo '<th class="filter-select" data-placeholder="Все">'.__('isAlarm').'</th>';
                     echo '<th>'.__('time').'</th>';
                     echo '<th>'.__('timestamp', array('title'=>'Дата получения информации')).'</th>';
                     echo '<th class="filter-false sorter-false">'.__('collectAlarm').'</th>';
@@ -81,41 +172,41 @@ echo '<th class="filter-select" data-placeholder="Все">'.__('on_plane').'</th
                 </tr>
             </thead>
             <tbody>
-            <?php 
+            <?php
             foreach ($list as $key => $deviceInfo) {
                 // разница в картах
                 $deltacard = ($deviceInfo->keyCount_reader - $deviceInfo->countDataBase);
                 $tr_class = 'success';
-                
+
                 $collectAttention = false;
-                if($deviceInfo->isBlocked 
-                    OR $deviceInfo->isAlarm 
+                if($deviceInfo->isBlocked
+                    OR $deviceInfo->isAlarm
                     OR (!$deviceInfo->onLine)
-                    OR ($deltacard != 0) 
-                    OR ($deviceInfo->doorMode == 'Fire') 
-                    OR ($deviceInfo->doorMode == 'Blocked') 
+                    OR ($deltacard != 0)
+                    OR ($deviceInfo->doorMode == 'Fire')
+                    OR ($deviceInfo->doorMode == 'Blocked')
                     OR ($deviceInfo->doorMode == 'Alarm')) {
                     $collectAttention = true;
                 }
-                
+
                 if($deltacard == 0) $tr_class = 'active';
                 if($deltacard < 0) $tr_class = 'danger';
                 if($deltacard > 0) $tr_class = 'warning';
-                
+
                 echo '<tr class="'.$tr_class.'">';
-                
+
                 // Колонка 0 - Чекбокс
                 echo '<td><label>';
                 echo Form::checkbox('id_dev['.$deviceInfo->id_dev.']', $deviceInfo->id_dev, false, array('class'=>'checkbox'));
                 echo '</label></td>';
-                
+
                 // Колонка 1 - SERVER_NAME
                 echo '<td>'. iconv('CP1251', 'UTF-8', $deviceInfo->servername).'</td>';
-                
+
                 // Колонка 2 - DEVICE_NAME
                 echo '<td>'.$deviceInfo->parentid . ' ' . HTML::anchor('devices/edit/'.$deviceInfo->parentid, iconv('windows-1251','UTF-8', $deviceInfo->parentname)).'</td>';
-                
-                // КОЛОНКА 3 - DEVICE_IsActive (с data-value для select фильтра)
+
+                // КОЛОНКА 3 - DEVICE_IsActive
                 echo '<td data-value="' . ($deviceInfo->active == 1 ? '1' : '0') . '">';
                 if($deviceInfo->active == 1) {
                     echo '<span class="hidden">1</span>';
@@ -127,10 +218,10 @@ echo '<th class="filter-select" data-placeholder="Все">'.__('on_plane').'</th
                     echo __(' Off');
                 }
                 echo '</td>';
-                
+
                 // Колонка 4 - DEVICE_TYPE
                 echo '<td>'.iconv('CP1251', 'UTF-8', $deviceInfo->devtypename).'</td>';
-                
+
                 // Колонка 5 - IP
                 echo '<td>';
                 if (is_null($deviceInfo->ip)) {
@@ -139,128 +230,115 @@ echo '<th class="filter-select" data-placeholder="Все">'.__('on_plane').'</th
                     echo HTML::anchor('http://'.$deviceInfo->ip, $deviceInfo->ip, array('target' => '_blank'));
                 }
                 echo '</td>';
-                
-// Колонка 6 - isOnLine (исправленный вариант)
-echo '<td data-value="';
-if($deviceInfo->mac != '00-00-00-00-00-00') {
-    echo $deviceInfo->onLine ? '0' : '1';
-} else {
-    echo '2';
-}
-echo '">';
-if($deviceInfo->mac != '00-00-00-00-00-00') {
-    if ($deviceInfo->onLine) {
-        echo '<span class="hidden">0</span>';
-        echo HTML::image("static/images/dot_green_n.png", array('height' => 20, 'alt' => 'Да'));
-        echo ' Онлайн';
-    } else {
-        echo '<span class="hidden">1</span>';
-        echo HTML::image("static/images/dot_red_h.png", array('height' => 20, 'alt' => 'Нет'));
-        echo HTML::image("static/images/attention.png", array('height' => 20, 'alt' => 'Требует внимания'));
-        echo ' Офлайн';
-    }
-} else {
-    echo '<span class="hidden">2</span>';
-    echo HTML::image("static/images/dot_yellow_h.png", array('height' => 20, 'alt' => 'Плохая связь'));
-    echo HTML::image("static/images/attention.png", array('height' => 20, 'alt' => 'Плохая связь', 'title'=>'Плохая связь.'));
-    echo ' Плохая связь';
-}
-echo '</td>';
-                
-// Колонка 7 - isWp
-if($deviceInfo->onLine) {
-    $wp_value = $deviceInfo->isWP ? '1' : '0';
-    echo '<td data-value="' . $wp_value . '">';
-    echo '<span class="hidden">' . $wp_value . '</span>';
-    echo Form::checkbox('', 1, $deviceInfo->isWP == true, array('disabled'=>'disabled'));
-    echo $deviceInfo->isWP ? ' Да' : ' Нет';
-    echo '</td>';
-} else {
-    echo '<td data-value="-">-</td>';
-}
-                
-// Колонка 8 - isTest
-if($deviceInfo->onLine) {
-    $test_value = $deviceInfo->isTest ? '1' : '0';
-    echo '<td data-value="' . $test_value . '">';
-    echo '<span class="hidden">' . $test_value . '</span>';
-    echo Form::checkbox('', 1, $deviceInfo->isTest == true, array('disabled'=>'disabled'));
-    echo $deviceInfo->isTest ? ' Да' : ' Нет';
-} else {
-    echo '<td data-value="-">-</td>';
-}
-                
-					// Колонка 9 - DOOR_NAME
-					echo '<td>';
-						echo $deviceInfo->id_dev.' '.HTML::anchor('door/doorInfo/'.$deviceInfo->id_dev, iconv('CP1251', 'UTF-8', $deviceInfo->name));
-												
-					echo '</td>';
-					
-					
-					
-						
-// Показываем иконку только если устройство есть на плане
-// Колонка - on_plane (с текстом для фильтра)
-// Колонка - on_plane
-echo '<td>';
-    // Проверяем статус модуля floorplan
-    if ($deviceInfo->floorplanStatus == 'disabled') {
-        // Модуль отключен - показываем серую иконку с подсказкой
-        echo '<span class="glyphicon glyphicon-ban-circle" style="color: #999;" title="Модуль планов отключен"></span>';
-        echo ' <span style="color: #999; font-size: 11px;">Отключен</span>';
-    } elseif ($deviceInfo->floorplanStatus == 'no_table') {
-        // Таблица не существует
-        echo '<span class="glyphicon glyphicon-exclamation-sign" style="color: #f0ad4e;" title="Таблица планов не найдена"></span>';
-        echo ' <span style="color: #f0ad4e; font-size: 11px;">Нет таблицы</span>';
-    } elseif ($deviceInfo->floorplanStatus == 'error') {
-        // Ошибка
-        echo '<span class="glyphicon glyphicon-remove-sign" style="color: #d9534f;" title="' . $deviceInfo->floorplanMessage . '"></span>';
-        echo ' <span style="color: #d9534f; font-size: 11px;">Ошибка</span>';
-    } else {
-        // Модуль работает - показываем иконку плана
-        echo '<span class="hidden">' . ($deviceInfo->hasFloorplan ? '1' : '0') . '</span>';
-        
-        if ($deviceInfo->hasFloorplan) {
-            echo HTML::anchor('floorplan/findDevice?id_dev='.$deviceInfo->id_dev, 
-                '<span class="glyphicon glyphicon-map-marker" style="color: #5cb85c; font-size: 16px;" title="Показать на плане"></span>', 
-                array(
-                    'target' => '_blank',
-                    'style' => 'text-decoration: none; margin-left: 3px;',
-                    'title' => 'Показать на плане'
-                )
-            );
-            echo ' <span style="color: #5cb85c; font-size: 11px;">На плане</span>';
-        } else {
-            echo '<span class="glyphicon glyphicon-map-marker" style="color: #ddd; font-size: 16px;" title="Не размещен на плане"></span>';
-            echo ' <span style="color: #999; font-size: 11px;">Не на плане</span>';
-        }
-    }
-echo '</td>';
-					
-					
-                
+
+                // Колонка 6 - isOnLine
+                echo '<td data-value="';
+                if($deviceInfo->mac != '00-00-00-00-00-00') {
+                    echo $deviceInfo->onLine ? '0' : '1';
+                } else {
+                    echo '2';
+                }
+                echo '">';
+                if($deviceInfo->mac != '00-00-00-00-00-00') {
+                    if ($deviceInfo->onLine) {
+                        echo '<span class="hidden">0</span>';
+                        echo HTML::image("static/images/dot_green_n.png", array('height' => 20, 'alt' => 'Да'));
+                        echo ' Онлайн';
+                    } else {
+                        echo '<span class="hidden">1</span>';
+                        echo HTML::image("static/images/dot_red_h.png", array('height' => 20, 'alt' => 'Нет'));
+                        echo HTML::image("static/images/attention.png", array('height' => 20, 'alt' => 'Требует внимания'));
+                        echo ' Офлайн';
+                    }
+                } else {
+                    echo '<span class="hidden">2</span>';
+                    echo HTML::image("static/images/dot_yellow_h.png", array('height' => 20, 'alt' => 'Плохая связь'));
+                    echo HTML::image("static/images/attention.png", array('height' => 20, 'alt' => 'Плохая связь', 'title'=>'Плохая связь.'));
+                    echo ' Плохая связь';
+                }
+                echo '</td>';
+
+                // Колонка 7 - isWp
+                if($deviceInfo->onLine) {
+                    $wp_value = $deviceInfo->isWP ? '1' : '0';
+                    echo '<td data-value="' . $wp_value . '">';
+                    echo '<span class="hidden">' . $wp_value . '</span>';
+                    echo Form::checkbox('', 1, $deviceInfo->isWP == true, array('disabled'=>'disabled'));
+                    echo $deviceInfo->isWP ? ' Да' : ' Нет';
+                    echo '</td>';
+                } else {
+                    echo '<td data-value="-">-</td>';
+                }
+
+                // Колонка 8 - isTest
+                if($deviceInfo->onLine) {
+                    $test_value = $deviceInfo->isTest ? '1' : '0';
+                    echo '<td data-value="' . $test_value . '">';
+                    echo '<span class="hidden">' . $test_value . '</span>';
+                    echo Form::checkbox('', 1, $deviceInfo->isTest == true, array('disabled'=>'disabled'));
+                    echo $deviceInfo->isTest ? ' Да' : ' Нет';
+                } else {
+                    echo '<td data-value="-">-</td>';
+                }
+
+                // Колонка 9 - DOOR_NAME
+                echo '<td>';
+                    echo $deviceInfo->id_dev.' '.HTML::anchor('door/doorInfo/'.$deviceInfo->id_dev, iconv('CP1251', 'UTF-8', $deviceInfo->name));
+                echo '</td>';
+
+                // Колонка - on_plane
+                echo '<td>';
+                    if ($deviceInfo->floorplanStatus == 'disabled') {
+                        echo '<span class="glyphicon glyphicon-ban-circle" style="color: #999;" title="Модуль планов отключен"></span>';
+                        echo ' <span style="color: #999; font-size: 11px;">Отключен</span>';
+                    } elseif ($deviceInfo->floorplanStatus == 'no_table') {
+                        echo '<span class="glyphicon glyphicon-exclamation-sign" style="color: #f0ad4e;" title="Таблица планов не найдена"></span>';
+                        echo ' <span style="color: #f0ad4e; font-size: 11px;">Нет таблицы</span>';
+                    } elseif ($deviceInfo->floorplanStatus == 'error') {
+                        echo '<span class="glyphicon glyphicon-remove-sign" style="color: #d9534f;" title="' . $deviceInfo->floorplanMessage . '"></span>';
+                        echo ' <span style="color: #d9534f; font-size: 11px;">Ошибка</span>';
+                    } else {
+                        echo '<span class="hidden">' . ($deviceInfo->hasFloorplan ? '1' : '0') . '</span>';
+
+                        if ($deviceInfo->hasFloorplan) {
+                            echo HTML::anchor('floorplan/findDevice?id_dev='.$deviceInfo->id_dev,
+                                '<span class="glyphicon glyphicon-map-marker" style="color: #5cb85c; font-size: 16px;" title="Показать на плане"></span>',
+                                array(
+                                    'target' => '_blank',
+                                    'style' => 'text-decoration: none; margin-left: 3px;',
+                                    'title' => 'Показать на плане'
+                                )
+                            );
+                            echo ' <span style="color: #5cb85c; font-size: 11px;">На плане</span>';
+                        } else {
+                            echo '<span class="glyphicon glyphicon-map-marker" style="color: #ddd; font-size: 16px;" title="Не размещен на плане"></span>';
+                            echo ' <span style="color: #999; font-size: 11px;">Не на плане</span>';
+                        }
+                    }
+                echo '</td>';
+
                 // Колонка 10 - DEVICE_VERSION
                 echo '<td>'.$deviceInfo->softVersion.'</td>';
-                
+
                 // Колонка 11 - SCUD_MODE
                 echo '<td>/';
                 echo $deviceInfo->scud.' '.$deviceInfo->id_reader;
                 if(($deviceInfo->scud == 'd1') AND ($deviceInfo->id_reader == 1) AND ($deviceInfo->doorMode != 'Disabled')) {
-                    echo HTML::image("static/images/attention.png", array('height' => 20, 'alt' => 'Требует внимания', 'title'=>'Для настройки Одна дверь вторую точку прохода необходимо выключить.')); 
-                    echo HTML::image("static/images/star_red.png", array('height' => 20, 'alt' => 'Требует внимания', 'title'=>'Недопустимая комбинация настроек.')); 
+                    echo HTML::image("static/images/attention.png", array('height' => 20, 'alt' => 'Требует внимания', 'title'=>'Для настройки Одна дверь вторую точку прохода необходимо выключить.'));
+                    echo HTML::image("static/images/star_red.png", array('height' => 20, 'alt' => 'Требует внимания', 'title'=>'Недопустимая комбинация настроек.'));
                 }
                 echo '</td>';
-                
+
                 // Колонка 12 - BASE_COUNT
                 echo '<td>'.iconv('CP1251', 'UTF-8', $deviceInfo->countDataBase).'</td>';
-                
+
                 // Колонка 13 - DEVICE_COUNT
                 if($deviceInfo->onLine) {
                     echo '<td>'.$deviceInfo->keyCount_reader.'</td>';
                 } else {
                     echo '<td>-</td>';
                 }
-                
+
                 // Колонка 14 - delta_count
                 if($deviceInfo->onLine) {
                     if ($deltacard == 0) {
@@ -273,7 +351,7 @@ echo '</td>';
                 } else {
                     echo '<td>-</td>';
                 }
-                
+
                 // Колонка 15 - DOORSTATE_MODE
                 echo '<td>';
                 switch($deviceInfo->doorMode) {
@@ -314,56 +392,56 @@ echo '</td>';
                         break;
                 }
                 echo '</td>';
-                
-               // Колонка 16 - isBlocked
-if($deviceInfo->onLine) {
-    $blocked_value = $deviceInfo->isBlocked ? '1' : '0';
-    echo '<td data-value="' . $blocked_value . '">';
-    echo '<span class="hidden">' . $blocked_value . '</span>';
-    echo Form::checkbox('', 1, $deviceInfo->isBlocked == true, array('disabled'=>'disabled'));
-    if ($deviceInfo->isBlocked == true) {
-        echo HTML::image("static/images/attention.png", array('height' => 20, 'alt' => 'Требует внимания', 'title'=>'Вход блокировки замкнут на "землю".'));
-    }
-    echo '</td>';
-} else {
-    echo '<td data-value="-">-</td>';
-}
-                
-               // Колонка 17 - isAlarm
-if($deviceInfo->onLine) {
-    $alarm_value = $deviceInfo->isAlarm ? '1' : '0';
-    echo '<td data-value="' . $alarm_value . '">';
-    echo '<span class="hidden">' . $alarm_value . '</span>';
-    echo Form::checkbox('', 1, $deviceInfo->isAlarm == true, array('disabled'=>'disabled'));
-    if ($deviceInfo->isAlarm == true) {
-        echo HTML::image("static/images/attention.png", array('height' => 20, 'alt' => 'Требует внимания', 'title'=>'Вход Alarm замкнут на "землю".'));
-    }
-    echo '</td>';
-} else {
-    echo '<td data-value="-">-</td>';
-}
-                
+
+                // Колонка 16 - isBlocked
+                if($deviceInfo->onLine) {
+                    $blocked_value = $deviceInfo->isBlocked ? '1' : '0';
+                    echo '<td data-value="' . $blocked_value . '">';
+                    echo '<span class="hidden">' . $blocked_value . '</span>';
+                    echo Form::checkbox('', 1, $deviceInfo->isBlocked == true, array('disabled'=>'disabled'));
+                    if ($deviceInfo->isBlocked == true) {
+                        echo HTML::image("static/images/attention.png", array('height' => 20, 'alt' => 'Требует внимания', 'title'=>'Вход блокировки замкнут на "землю".'));
+                    }
+                    echo '</td>';
+                } else {
+                    echo '<td data-value="-">-</td>';
+                }
+
+                // Колонка 17 - isAlarm
+                if($deviceInfo->onLine) {
+                    $alarm_value = $deviceInfo->isAlarm ? '1' : '0';
+                    echo '<td data-value="' . $alarm_value . '">';
+                    echo '<span class="hidden">' . $alarm_value . '</span>';
+                    echo Form::checkbox('', 1, $deviceInfo->isAlarm == true, array('disabled'=>'disabled'));
+                    if ($deviceInfo->isAlarm == true) {
+                        echo HTML::image("static/images/attention.png", array('height' => 20, 'alt' => 'Требует внимания', 'title'=>'Вход Alarm замкнут на "землю".'));
+                    }
+                    echo '</td>';
+                } else {
+                    echo '<td data-value="-">-</td>';
+                }
+
                 // Колонка 18 - time
                 echo '<td>/'.number_format($deviceInfo->timeExecute, 3, '.', '').'</td>';
-                
+
                 // Колонка 19 - timestamp
                 echo '<td>';
                 echo date('d.m.Y H:i:s', $deviceInfo->timeGetData);
-                
+
                 $tt3 = time();
                 $pbvalue = intval((($deviceInfo->timeGetData + 60*60*24 - $tt3) * 100) / (60*60*24));
                 $pbcolor = 'progress-bar-danger';
-                
+
                 if($pbvalue >= 76) $pbcolor = 'progress-bar-success';
                 if($pbvalue >= 51 and $pbvalue < 75) $pbcolor = 'progress-bar-info';
                 if($pbvalue >= 26 and $pbvalue < 51) $pbcolor = 'progress-bar-warning';
                 if($pbvalue < 26) $pbcolor = 'progress-bar-danger';
-                
+
                 echo '<div class="progress">
                     <div class="progress-bar '.$pbcolor.'" role="progressbar" style="width: '.$pbvalue.'%"></div>
                 </div>';
                 echo '</td>';
-                
+
                 // Колонка 20 - collectAlarm
                 echo '<td>';
                 if($collectAttention) {
@@ -371,14 +449,15 @@ if($deviceInfo->onLine) {
                     echo '<span class="hidden">1</span>';
                 }
                 echo '</td>';
-                
+
                 echo '</tr>';
             }
             ?>
             </tbody>
         </table>
-        
+
         <br><br><br><br><br><br><br>
+
         <!-- блок кнопок в нижней части экрана -->
         <nav class="navbar navbar-default navbar-fixed-bottom disable" role="navigation">
             <div class="container">
@@ -387,11 +466,11 @@ if($deviceInfo->onLine) {
                 <button type="submit" class="btn btn-danger sm" name="clear_device" value="1" title="Удалить карты из выбранных точек прохода"><?php echo __('clear_device'); ?></button>
                 <button type="submit" class="btn btn-danger sm" name="load_card" value="1" title="Загрузить карты в выбранные точки прохода"><?php echo __('load_card'); ?></button>
                 <button type="submit" class="btn btn-success sm" name="checkStatus" value="1" title="Чтение состояния и запись данных в базу данных."><?php echo __('checkStatus'); ?></button>
-               <!-- <button type="submit" class="btn btn-warning sm" name="readkey" value="1" title="Вычитка карт из точки прохода и запись в файл"><?php echo __('Comparekey'); ?></button>-->
+                <!-- <button type="submit" class="btn btn-warning sm" name="readkey" value="1" title="Вычитка карт из точки прохода и запись в файл"><?php echo __('Comparekey'); ?></button>-->
                 <br>
-				<button type="submit" class="btn btn-warning sm" name="cardidx_refresh" value="1" title="cardidx_refresh"><?php echo __('cardidx_refresh'); ?></button>
-                
-                <?php 
+                <button type="submit" class="btn btn-warning sm" name="cardidx_refresh" value="1" title="cardidx_refresh"><?php echo __('cardidx_refresh'); ?></button>
+
+                <?php
                 echo Form::button('control_door', 'Разблокировать', array('value'=>'unlockdoor', 'class'=>'btn btn-warning', 'type' => 'submit'));
                 echo Form::button('control_door', 'Открыть 1 раз', array('value'=>'opendoor', 'class'=>'btn btn-warning', 'type' => 'submit'));
                 echo Form::button('control_door', 'Открыть навсегда', array('value'=>'opendooralways', 'class'=>'btn btn-warning', 'type' => 'submit'));
@@ -399,92 +478,7 @@ if($deviceInfo->onLine) {
                 ?>
             </div>
         </nav>
-        
+
         <?php echo Form::close(); ?>
     </div>
 </div>
-<script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-    // Добавляем кнопку
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'btn btn-success';
-    btn.id = 'exportCsvBtn';
-    btn.style.margin = '5px';
-    btn.innerHTML = '<span class="glyphicon glyphicon-export"></span> Экспорт в CSV';
-    
-    var container = document.querySelector('.container');
-    if (container) {
-        container.appendChild(btn);
-    }
-    
-    btn.addEventListener('click', function() {
-        exportTableToCSV('devices_export_' + getDateString() + '.csv');
-    });
-});
-
-function getDateString() {
-    var d = new Date();
-    return d.getFullYear() + '-' + 
-           String(d.getMonth()+1).padStart(2,'0') + '-' + 
-           String(d.getDate()).padStart(2,'0') + '_' +
-           String(d.getHours()).padStart(2,'0') + '-' +
-           String(d.getMinutes()).padStart(2,'0');
-}
-
-function exportTableToCSV(filename) {
-    var table = document.getElementById('tablesorter');
-    if (!table) {
-        alert('Таблица не найдена');
-        return;
-    }
-    
-    var rows = table.querySelectorAll('tbody tr');
-    if (rows.length === 0) {
-        alert('Нет данных для экспорта');
-        return;
-    }
-    
-    // Заголовки
-    var headers = [];
-    var ths = table.querySelectorAll('thead tr th');
-    ths.forEach(function(th) {
-        var text = th.textContent.trim();
-        if (text === '' || text === 'Выделить') text = 'Выбрать';
-        headers.push(text);
-    });
-    
-    // Данные
-    var data = [];
-    rows.forEach(function(tr) {
-        var row = [];
-        var tds = tr.querySelectorAll('td');
-        tds.forEach(function(td) {
-            var value = td.textContent.trim().replace(/\s+/g, ' ');
-            row.push(value);
-        });
-        data.push(row);
-    });
-    
-    // Формируем CSV
-    var csv = '\uFEFF'; // BOM
-    csv += headers.join(';') + '\n';
-    
-    data.forEach(function(row) {
-        var escaped = row.map(function(cell) {
-            if (cell.includes(';') || cell.includes('"') || cell.includes('\n')) {
-                return '"' + cell.replace(/"/g, '""') + '"';
-            }
-            return cell;
-        });
-        csv += escaped.join(';') + '\n';
-    });
-    
-    // Скачиваем
-    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    var link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-}
-</script>
