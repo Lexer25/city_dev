@@ -459,25 +459,30 @@ function exportTableToCSV(filename) {
         <br><br><br><br><br><br><br>
 
         <!-- блок кнопок в нижней части экрана -->
-        <nav class="navbar navbar-default navbar-fixed-bottom disable" role="navigation">
-            <div class="container">
-                <button type="submit" class="btn btn-primary sm" name="synctime" value="1" title="Синхронизация времени в контроллерах"><?php echo __('synctime_dev'); ?></button>
-                <button type="submit" class="btn btn-primary sm" name="settz" value="1" title="Установить временные зоны для выбранных контроллеров"><?php echo __('settz'); ?></button>
-                <button type="submit" class="btn btn-danger sm" name="clear_device" value="1" title="Удалить карты из выбранных точек прохода"><?php echo __('clear_device'); ?></button>
-                <button type="submit" class="btn btn-danger sm" name="load_card" value="1" title="Загрузить карты в выбранные точки прохода"><?php echo __('load_card'); ?></button>
-                <button type="submit" class="btn btn-success sm" name="checkStatus" value="1" title="Чтение состояния и запись данных в базу данных."><?php echo __('checkStatus'); ?></button>
-                <!-- <button type="submit" class="btn btn-warning sm" name="readkey" value="1" title="Вычитка карт из точки прохода и запись в файл"><?php echo __('Comparekey'); ?></button>-->
-                <br>
-                <button type="submit" class="btn btn-warning sm" name="cardidx_refresh" value="1" title="cardidx_refresh"><?php echo __('cardidx_refresh'); ?></button>
+<?php
+    // Определяем класс для навигации в зависимости от прав администратора
+    $navClass = ($is_admin === true) ? 'navbar navbar-default navbar-fixed-bottom' : 'navbar navbar-default navbar-fixed-bottom disable';
+?>
+<nav class="<?php echo $navClass; ?>" role="navigation">
+    <div class="container">
+        <button type="submit" class="btn btn-primary sm" name="synctime" value="1" title="Синхронизация времени в контроллерах" <?php echo ($is_admin === true) ? '' : 'disabled'; ?>><?php echo __('synctime_dev'); ?></button>
+        <button type="submit" class="btn btn-primary sm" name="settz" value="1" title="Установить временные зоны для выбранных контроллеров" <?php echo ($is_admin === true) ? '' : 'disabled'; ?>><?php echo __('settz'); ?></button>
+        <button type="submit" class="btn btn-danger sm" name="clear_device" value="1" title="Удалить карты из выбранных точек прохода" <?php echo ($is_admin === true) ? '' : 'disabled'; ?>><?php echo __('clear_device'); ?></button>
+        <button type="submit" class="btn btn-danger sm" name="load_card" value="1" title="Загрузить карты в выбранные точки прохода" <?php echo ($is_admin === true) ? '' : 'disabled'; ?>><?php echo __('load_card'); ?></button>
+        <button type="submit" class="btn btn-success sm" name="checkStatus" value="1" title="Чтение состояния и запись данных в базу данных." <?php echo ($is_admin === true) ? '' : 'disabled'; ?>><?php echo __('checkStatus'); ?></button>
+        <!-- <button type="submit" class="btn btn-warning sm" name="readkey" value="1" title="Вычитка карт из точки прохода и запись в файл"><?php echo __('Comparekey'); ?></button>-->
+        <br>
+        <button type="submit" class="btn btn-warning sm" name="cardidx_refresh" value="1" title="cardidx_refresh" <?php echo ($is_admin === true) ? '' : 'disabled'; ?>><?php echo __('cardidx_refresh'); ?></button>
 
-                <?php
-                echo Form::button('control_door', 'Разблокировать', array('value'=>'unlockdoor', 'class'=>'btn btn-warning', 'type' => 'submit'));
-                echo Form::button('control_door', 'Открыть 1 раз', array('value'=>'opendoor', 'class'=>'btn btn-warning', 'type' => 'submit'));
-                echo Form::button('control_door', 'Открыть навсегда', array('value'=>'opendooralways', 'class'=>'btn btn-warning', 'type' => 'submit'));
-                echo Form::button('control_door', 'Закрыть навсегда', array('value'=>'lockdoor', 'class'=>'btn btn-warning', 'type' => 'submit'));
-                ?>
-            </div>
-        </nav>
+        <?php
+        $disabled = ($is_admin === true) ? array() : array('disabled' => 'disabled');
+        echo Form::button('control_door', 'Разблокировать', array_merge(array('value'=>'unlockdoor', 'class'=>'btn btn-warning', 'type' => 'submit'), $disabled));
+        echo Form::button('control_door', 'Открыть 1 раз', array_merge(array('value'=>'opendoor', 'class'=>'btn btn-warning', 'type' => 'submit'), $disabled));
+        echo Form::button('control_door', 'Открыть навсегда', array_merge(array('value'=>'opendooralways', 'class'=>'btn btn-warning', 'type' => 'submit'), $disabled));
+        echo Form::button('control_door', 'Закрыть навсегда', array_merge(array('value'=>'lockdoor', 'class'=>'btn btn-warning', 'type' => 'submit'), $disabled));
+        ?>
+    </div>
+</nav>
 
         <?php echo Form::close(); ?>
     </div>
