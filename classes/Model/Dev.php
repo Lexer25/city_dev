@@ -263,33 +263,72 @@ public function getDataList()
 	
 	
 	// В модели Model_Dev или Model_Floorplan
-public function checkDeviceOnFloorplan($id_dev)
-{
-    // Проверяем, существует ли таблица floorplan
-    try {
-        $sql = "SELECT 1 FROM RDB\$RELATIONS WHERE RDB\$RELATION_NAME = 'FLOORPLAN_DEVICES'";
-        $tableExists = DB::query(Database::SELECT, $sql)
-            ->execute(Database::instance('fb'))
-            ->count();
-        
-        if ($tableExists == 0) {
-            return false; // Таблица не существует
-        }
-        
-        // Проверяем, есть ли устройство на плане
-        $sql = "SELECT COUNT(*) as cnt FROM floorplan_devices WHERE id_dev = :id_dev";
-        $result = DB::query(Database::SELECT, $sql)
-            ->param(':id_dev', $id_dev)
-            ->execute(Database::instance('fb'))
-            ->as_array();
-        
-        return Arr::get($result[0], 'CNT', 0) > 0;
-        
-    } catch (Exception $e) {
-        Log::instance()->add(Log::ERROR, 'Ошибка проверки floorplan_devices: ' . $e->getMessage());
-        return false;
-    }
-}
+	public function checkDeviceOnFloorplan($id_dev)
+	{
+		// Проверяем, существует ли таблица floorplan
+		try {
+			$sql = "SELECT 1 FROM RDB\$RELATIONS WHERE RDB\$RELATION_NAME = 'FLOORPLAN_DEVICES'";
+			$tableExists = DB::query(Database::SELECT, $sql)
+				->execute(Database::instance('fb'))
+				->count();
+			
+			if ($tableExists == 0) {
+				return false; // Таблица не существует
+			}
+			
+			// Проверяем, есть ли устройство на плане
+			$sql = "SELECT COUNT(*) as cnt FROM floorplan_devices WHERE id_dev = :id_dev";
+			$result = DB::query(Database::SELECT, $sql)
+				->param(':id_dev', $id_dev)
+				->execute(Database::instance('fb'))
+				->as_array();
+			
+			return Arr::get($result[0], 'CNT', 0) > 0;
+			
+		} catch (Exception $e) {
+			Log::instance()->add(Log::ERROR, 'Ошибка проверки floorplan_devices: ' . $e->getMessage());
+			return false;
+		}
+	}
+	
+	
+	public function load_order()// вывод очереди карт на загрузку
+	{
+		$sql='select d.id_dev,
+       min(d.name)  as name,
+       min(d2.name) as device,
+       min(s.name)  as server,
+       sum(case when cd.operation = 1 then 1 else 0 end) as COUNT_WRITE,
+       sum(case when cd.operation = 2 then 1 else 0 end) as COUNT_DELETE
+		from cardindev cd
+		  join device d  on d.id_dev = cd.id_dev
+		  join device d2 on d2.id_ctrl = d.id_ctrl and d2.id_reader is null
+		  join server s  on d2.id_server = s.id_server
+		where d."ACTIVE" > 0 and d2."ACTIVE" > 0
+		  and d2.id_devtype in (1,2,6)
+		group by d.id_dev';
+ 
+ 
+		$query = DB::query(Database::SELECT, $sql)
+		->execute(Database::instance('fb'))
+		->as_array();
+		
+		$res=array();
+		foreach ($query as $key=>$value)
+		{
+			$res[$value['ID_DEV']]['ID_DEV']=Arr::get($value, 'ID_DEV');
+			$res[$value['ID_DEV']]['NAME']=iconv('windows-1251','UTF-8',Arr::get($value, 'NAME'));
+			$res[$value['ID_DEV']]['DEVICE']=iconv('windows-1251','UTF-8',Arr::get($value, 'DEVICE'));
+			$res[$value['ID_DEV']]['SERVER']=iconv('windows-1251','UTF-8',Arr::get($value, 'SERVER'));
+			$res[$value['ID_DEV']]['COUNT_WRITE']=Arr::get($value, 'COUNT_WRITE');
+			$res[$value['ID_DEV']]['COUNT_DELETE']=Arr::get($value, 'COUNT_DELETE');
+		}
+		
+		return $res;
+	}
+	
+	
+	
 }
 	
 

@@ -107,7 +107,7 @@
 									if(count(Arr::get($errArrForDevice, Arr::get($value, 'ID_DEV'))) > 0)
 									{
 										//echo Debug::vars('109', Arr::get($errArrForDevice, Arr::get($value, 'ID_DEV'))); 
-										
+										echo implode ("<br>", Arr::get($errArrForDevice, Arr::get($value, 'ID_DEV')));
 										foreach(Arr::get($errArrForDevice, Arr::get($value, 'ID_DEV')) as $key2=>$value2)
 										{
 										

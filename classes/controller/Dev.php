@@ -46,28 +46,18 @@ class Controller_Dev extends Controller_Template {
 	public function action_load_order()
 	{
 		
-		$_SESSION['menu_active']='load_order';
-		
-		if(!empty($_POST['stop_load'])) Model::Factory('Stat')->stop_load($_POST['stop_load']);
-		if(Arr::get($_POST, 'reload', 0)) Model::Factory('Stat')->repeat_load(Arr::get($_POST, 'reload'));
-		if(Arr::get($_POST, 'del_queue', 0)) Model::Factory('Stat')->del_queue(Arr::get($_POST, 'reload'));
+		$errArrForDevice=array();
+		$cardidxList=array();
 	
 		$errArrForDevice=$this->getErrArrForDevice();//список ошибок при записи
-	//echo Debug::vars('205', $errArrForDevice); exit;	
-		$b=array();
-		//$c=array();
+		//$b=Model::Factory('Stat')->load_order(); // вывод очереди карт на загрузку
+		$cardidxList=Model::Factory('Dev')->load_order(); // вывод очереди карт на загрузку
 		
-		$b=Model::Factory('Stat')->load_order(); // вывод очереди карт на загрузку
-		//$c=Model::Factory('Stat')->load_order_overcount(); // вывод очереди карт на загрузку с превышенным количеством попыток
-		
-		$c=array();
 		$content = View::factory('order_table', array(
-			'list' => $b,
-			'overcount'=>$c,
+			'list' => $cardidxList,
 			'errArrForDevice'=>$errArrForDevice,
 		));
         $this->template->content = $content;
-		
 		
 	}
 	
@@ -84,12 +74,13 @@ class Controller_Dev extends Controller_Template {
 				when (cdx.load_result containing \'Device return error, code is 1\') then (SELECT \'is_1\' FROM RDB$DATABASE)
 				when (cdx.load_result containing \'UDP recv() error\') then (SELECT \'udp_err\' FROM RDB$DATABASE)
 				when (cdx.load_result containing \'not found\') then (SELECT \'not_found\' FROM RDB$DATABASE)
+				when (cdx.load_result is null) then (SELECT \'no_data\' FROM RDB$DATABASE)
 				else  cdx.load_result
 			end as load_result
 			from cardidx cdx
             where cdx.load_result containing \'err\'';
 			
-		$query = DB::query(Database::SELECT, $sql)
+		$query = DB::query(Database::SELECT, $sql2)
 		->execute(Database::instance('fb'));
 		$mess=array(
 			'is_1'=>'234_mess',
@@ -100,7 +91,7 @@ class Controller_Dev extends Controller_Template {
 			foreach($query as $key=>$value)
 			{
 				
-				$result[Arr::get($value, 'ID_DEV')][]=Arr::get($value, 'LOAD_RESULT');
+				$result[Arr::get($value, 'ID_DEV')][]=iconv('windows-1251','UTF-8',Arr::get($value, 'LOAD_RESULT'));
 
 			}	
 		return $result;
