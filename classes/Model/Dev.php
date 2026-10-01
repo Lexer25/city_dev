@@ -328,6 +328,73 @@ public function getDataList()
 	}
 	
 	
+	/**
+	 * Словарь: фрагмент технического текста cardidx.load_result => понятное пользователю описание.
+	 * Подбор идёт по подстроке без учёта регистра, берётся первое совпадение.
+	 * При появлении новых формулировок в БД - добавлять сюда.
+	 */
+	protected static $loadResultMessages = array(
+		// формулировки, которые встречаются в cardidx.load_result сейчас
+		'authorisation error' => 'Ошибка авторизации на транспортном сервере',
+		'device offline'      => 'Контроллер не в сети',
+		'not found'           => 'Устройство не найдено на транспортном сервере',
+		'socket error'        => 'Нет связи с транспортным сервером',
+		// исторические формулировки (встречались в других сборках/базах)
+		'code is 1'           => 'Не хватает памяти контроллера',
+		'recv()'              => 'Нет связи с контроллером',
+	);
+	
+	/**
+	 * Описание ошибки по умолчанию, если формулировка не распознана.
+	 */
+	const LOAD_RESULT_UNKNOWN = 'Ошибка загрузки карт';
+	
+	/**
+	 * Перевод технического текста результата загрузки карты (cardidx.load_result)
+	 * в понятное пользователю описание.
+	 *
+	 * @param string $loadResult значение cardidx.load_result
+	 * @return string описание для пользователя
+	 */
+	public function humanizeLoadResult($loadResult)
+	{
+		$loadResult = (string) $loadResult;
+		
+		foreach (self::$loadResultMessages as $needle => $message)
+		{
+			if (stripos($loadResult, $needle) !== false) return $message;
+		}
+		
+		return self::LOAD_RESULT_UNKNOWN;
+	}
+	
+	/**
+	 * Группировка технических текстов результата загрузки по понятному описанию.
+	 * Разные технические формулировки с одним смыслом (например, от разных транспортных
+	 * серверов TRANS2, TRANS3, ... ) сворачиваются в одну строку со счётчиком повторов.
+	 *
+	 * @param array $loadResults список значений cardidx.load_result
+	 * @return array array(описание => array('count' => число повторов, 'raw' => array(технические тексты)))
+	 */
+	public function humanizeLoadResultList(array $loadResults)
+	{
+		$result = array();
+		
+		foreach ($loadResults as $loadResult)
+		{
+			$message = $this->humanizeLoadResult($loadResult);
+			
+			if ( ! isset($result[$message]))
+			{
+				$result[$message] = array('count' => 0, 'raw' => array());
+			}
+			
+			$result[$message]['count']++;
+			$result[$message]['raw'][] = (string) $loadResult;
+		}
+		
+		return $result;
+	}
 	
 }
 	

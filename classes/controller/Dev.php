@@ -61,32 +61,42 @@ class Controller_Dev extends Controller_Template {
 		
 	}
 	
+	/**
+	 * P0. Приведение списка id_dev, полученного из POST, к массиву уникальных положительных целых чисел.
+	 * Убирает возможность SQL-инъекции через id_dev и появление пустого списка в IN ().
+	 * Ключи массива сохраняются равными id_dev: так их ожидают модели Device (foreach ($dev as $id_dev => $value)).
+	 *
+	 * @param mixed $value значение из POST (массив, строка или null)
+	 * @return array массив вида id_dev => id_dev
+	 */
+	protected function sanitizeIdDev($value)
+	{
+		if ( ! is_array($value)) {
+			$value = ($value === null OR $value === '') ? array() : array($value);
+		}
+		
+		$result = array();
+		foreach ($value as $id) {
+			$id = (int) $id;
+			if ($id > 0) $result[$id] = $id;
+		}
+		
+		return $result;
+	}
+	
 	//подготовка списка ошибок для каждого устройтва
 	
 	public function  getErrArrForDevice()
 	{
-		$sql='select distinct cdx.id_dev, cdx.load_result from cardidx cdx
-			where cdx.load_result containing \'err\'';
-			
-		$sql2='select distinct
+		
+		$sql='select distinct
 			cdx.id_dev,
-			case
-				when (cdx.load_result containing \'Device return error, code is 1\') then (SELECT \'is_1\' FROM RDB$DATABASE)
-				when (cdx.load_result containing \'UDP recv() error\') then (SELECT \'udp_err\' FROM RDB$DATABASE)
-				when (cdx.load_result containing \'not found\') then (SELECT \'not_found\' FROM RDB$DATABASE)
-				when (cdx.load_result is null) then (SELECT \'no_data\' FROM RDB$DATABASE)
-				else  cdx.load_result
-			end as load_result
+			cdx.load_result as load_result
 			from cardidx cdx
             where cdx.load_result containing \'err\'';
 			
-		$query = DB::query(Database::SELECT, $sql2)
+		$query = DB::query(Database::SELECT, $sql)
 		->execute(Database::instance('fb'));
-		$mess=array(
-			'is_1'=>'234_mess',
-			'udp_err'=>'235_mess_mess',
-			'not_found'=>'235_mess_mess'
-		);
 		$result=array();	
 			foreach($query as $key=>$value)
 			{
@@ -103,20 +113,32 @@ class Controller_Dev extends Controller_Template {
 	{
 		$_SESSION['menu_active']='device_control';
 		
-		// Логируем для отладки
+		// P0. Управление контроллерами (двери, карты, время) разрешено только администратору.
+		// В интерфейсе кнопки лишь гасятся для не-администратора, поэтому проверка обязательна и на сервере.
+		if ( ! $this->is_admin) {
+			$user = (class_exists('Auth') AND Auth::instance()->logged_in()) ? Auth::instance()->get_user() : 'guest';
+			Log::instance()->add(Log::NOTICE, 'Отказ в управлении контроллерами: недостаточно прав, user='.$user);
+			$this->redirect('errorpage?err='.urlencode(__('Управление контроллерами доступно только администраторам')));
+		}
 		
+		// P0. Защита от CSRF: скрытое поле csrf_token выводится в форме (views/load_table_new2.php).
+		if ( ! Security::check((string) Arr::get($_POST, 'csrf_token'))) {
+			Log::instance()->add(Log::NOTICE, 'Отказ в управлении контроллерами: неверный CSRF-токен');
+			$this->redirect('errorpage?err='.urlencode(__('Неверный или устаревший CSRF-токен. Обновите страницу и повторите действие.')));
+		}
 		
 		$res='';
 		if(array_key_exists('checkStateDoor',$_POST)){ // опрос состояния контроллеров
 				
-				//echo Debug::vars('177 опрос указанных контроллеров', $_POST);exit;
-				if(is_null(Arr::get($_POST, 'id_dev'))) $this->redirect('errorpage?err='.__('no device id for check door state'));
+				// P0. Id точек прохода берём только в виде массива целых чисел.
+				$id_dev_selected=$this->sanitizeIdDev(Arr::get($_POST, 'id_dev'));
+				if(empty($id_dev_selected)) $this->redirect('errorpage?err='.__('no device id for check door state'));
 				
 
 					
 					$sql='select distinct d2.id_dev from device d
 							join device d2 on d2.id_ctrl=d.id_ctrl  and d2.id_reader is null
-							where d.id_dev in ('.implode(",", Arr::get($_POST, 'id_dev')).')';
+							where d.id_dev in ('.implode(",", $id_dev_selected).')';
 					
 					$query = DB::query(Database::SELECT, $sql)
 							->execute(Database::instance('fb'))
@@ -126,22 +148,22 @@ class Controller_Dev extends Controller_Template {
 					Model::factory('Device')->getStatForOneController(Arr::get($value, 'ID_DEV'));//надо указать id контроллера
 					Log::instance()->add(Log::DEBUG, '183 сбор информации для контроллера id_dev='.Arr::get($value, 'ID_DEV'));
 				}
-				$res='183 сбор информации для контроллеров'.implode(",", Arr::get($_POST, 'id_dev'));
+				$res='183 сбор информации для контроллеров'.implode(",", $id_dev_selected);
 		}
 
 		if(array_key_exists('all',$_POST)) 
 			{
-				$id_dev=Model::Factory('Device')->getdeviceList();
+				$id_dev=$this->sanitizeIdDev(Model::Factory('Device')->getdeviceList());
 			} else {
 			
-				$id_dev=Arr::get($_POST, 'id_dev'); 
+				$id_dev=$this->sanitizeIdDev(Arr::get($_POST, 'id_dev')); 
 			}
 
 		
 		
 		if (Arr::get($_POST, 'synctime'))
 		{
-				if(is_null(Arr::get($_POST, 'id_dev'))) $this->redirect('errorpage?err='.__('no device id for synctime'));
+				if(empty($id_dev)) $this->redirect('errorpage?err='.__('no device id for synctime'));
 				Log::instance()->add(Log::NOTICE, 'Synctime for device :user', array(
 					'user' => implode(",",$id_dev),
 				));
@@ -153,8 +175,8 @@ class Controller_Dev extends Controller_Template {
 		
 		if (Arr::get($_POST, 'checkStatus'))// запись состояния контроллера в БД: версия контроллера, контроль линии связи, кол-во карт в указаанной канале (только в одном!!!), кол-во карт двери по базе данных.
 		{
+				if(empty($id_dev)) $this->redirect('errorpage?err='.__('no device id for check status'));
 				
-				//echo Debug::vars('173', $_POST, $id_dev); //exit;
 				$sql='select distinct d2.id_dev, d2.id_devtype, d2.netaddr from device d
 					join device d2 on d2.id_ctrl=d.id_ctrl and d2.id_reader is null
 					where d.id_dev in ('.implode(",", $id_dev).')';
@@ -162,7 +184,6 @@ class Controller_Dev extends Controller_Template {
 				$query = DB::query(Database::SELECT, $sql)
 			->execute(Database::instance('fb'))
 			->as_array();	
-				//	echo Debug::vars('270', $query);exit;
 				foreach($query as $key)
 				{
 						
@@ -177,8 +198,7 @@ class Controller_Dev extends Controller_Template {
 										$deviceHard->disconnect();
 										
 									} else {
-										//echo Debug::vars('214 Неправильно указан IP адрес устройства id_dev='.$key);exit;		
-										Log::instance()->add(Log::DEBUG, '214 Неправильно указан IP адрес устройства id_dev='.$key);										
+										Log::instance()->add(Log::DEBUG, '214 Неправильно указан IP адрес устройства id_dev='.Arr::get($key, 'ID_DEV'));										
 								}
 								//echo Debug::vars('336', $deviceHard); exit;
 								$deviceState=array(
@@ -233,7 +253,7 @@ class Controller_Dev extends Controller_Template {
 		
 		if (Arr::get($_POST, 'checkStatusOnLine'))// проверка статуса он-лайн. Делается вычитка количества карт по базе данных и из контроллера и заносится в базу данных.
 		{
-				//echo Debug::vars('178', 'checkStatus'); exit;
+				if(empty($id_dev)) $this->redirect('errorpage?err='.__('no device id for check status online'));
 				$res=Model::Factory('Device')->checkStatusOnLine($id_dev);
 				$b=Model::Factory('Stat')->load_table($id_dev, $res);
 				
@@ -242,7 +262,7 @@ class Controller_Dev extends Controller_Template {
 		if (Arr::get($_POST, 'load_card'))// загрузить карты в контроллер 
 		{
 
-				if(is_null(Arr::get($_POST, 'id_dev'))) $this->redirect('errorpage?err='.__('no device id for load'));
+				if(empty($id_dev)) $this->redirect('errorpage?err='.__('no device id for load'));
 				$res=Model::Factory('Device')->load_card_arr($id_dev);
 		}
 		
@@ -250,21 +270,20 @@ class Controller_Dev extends Controller_Template {
 		if (Arr::get($_POST, 'cardidx_refresh'))// загрузить карты в контроллер 
 		{
 
-				if(is_null(Arr::get($_POST, 'id_dev'))) $this->redirect('errorpage?err='.__('cardidx_refresh'));
+				if(empty($id_dev)) $this->redirect('errorpage?err='.__('cardidx_refresh'));
 				$res=Model::Factory('Device')->cardidx_refresh($id_dev);
 		}
 		
 		
 		if (Arr::get($_POST, 'clear_device'))
 		{
-				if(is_null(Arr::get($_POST, 'id_dev'))) $this->redirect('errorpage?err='.__('no device id for clear'));
+				if(empty($id_dev)) $this->redirect('errorpage?err='.__('no device id for clear'));
 				$res=Model::Factory('Device')->clear_device_arr($id_dev);
 		}
 		
 		if (Arr::get($_POST, 'control_door'))//выполнение команд для точек прохода. Сама команда содержится в Arr::get($_POST, 'control_door') (открыть, закрыть и т.п.)
 		{
-				//echo Debug::vars('257', $_POST, Arr::get($_POST, 'control_door'));exit;
-				if(is_null(Arr::get($_POST, 'id_dev'))) $this->redirect('errorpage?err='.__('no device id for clear'));// если нет перечня точек прохода, то выходим...
+				if(empty($id_dev)) $this->redirect('errorpage?err='.__('no device id for clear'));// если нет перечня точек прохода, то выходим...
 				$res=Model::Factory('Device')->unlock_door_arr($id_dev, Arr::get($_POST, 'control_door'));// реализация команды управления точкой прохода
 				sleep(2);//пауза, чтобы контроллер успел поменять свое состояние
 				foreach($id_dev as $key=>$value)// тут получаю список точек прохода (не контроллеров!!!)
@@ -280,7 +299,7 @@ class Controller_Dev extends Controller_Template {
 		
 		if (Arr::get($_POST, 'settz'))
 		{
-				if(is_null(Arr::get($_POST, 'id_dev'))) $this->redirect('errorpage?err='.__('no device id for settz'));
+				if(empty($id_dev)) $this->redirect('errorpage?err='.__('no device id for settz'));
 				$res=Model::Factory('Device')->settz_arr($id_dev);
 		}
 		
@@ -293,13 +312,12 @@ class Controller_Dev extends Controller_Template {
 		*/
 		if (Arr::get($_POST, 'readkey'))//вычитать данные из контроллеров, сравнить с базой данных, найти "лишние" карты и выставить их в очередь на удалдение.
 		{
+			if(empty($id_dev)) $this->redirect('errorpage?err='.__('no device id for readkey'));
 			$errKeyFormat=0;	
 			$errKeyFormat=Model::factory('dbskud')->checkRfidKeyFormat();
-	//echo Debug::vars('421', $errKeyFormat);exit;
 			if(count($errKeyFormat)>0) throw new Exception ('Ошибка в номерах идентификаторов RFID. Проверьте RFID '.implode(",", $errKeyFormat));
 				$post=Validation::factory($_POST);
-				$post->rule('id_dev', 'not_empty')
-					->rule('readkey', 'digit');
+				$post->rule('readkey', 'digit');
 					
 					$t1=microtime(true);
 			if($post->check())
@@ -477,14 +495,16 @@ class Controller_Dev extends Controller_Template {
 								
 								}else {
 									
-									$result='Для точки прохода id_dev='.Arr::get($key, 'ID_DEV').' "'. iconv('windows-1251','UTF-8',Arr::get($key, 'NAME')).'" сверка не производится, т.к. контроллера имеет настройку Одна дверь на два считывателя, и канал 1 повторяет содержимое канала 1.';
+									// P0: имя точки прохода приходит из БД, поэтому экранируем его в сообщении
+									$result='Для точки прохода id_dev='.(int)Arr::get($key, 'ID_DEV').' "'. htmlspecialchars(iconv('windows-1251','UTF-8',Arr::get($key, 'NAME')), ENT_QUOTES, 'UTF-8').'" сверка не производится, т.к. контроллера имеет настройку Одна дверь на два считывателя, и канал 1 повторяет содержимое канала 1.';
 									Log::instance()->add(Log::NOTICE, $result);
 									
 								}
 								
 								} else { // если нет подключения
 								
-									$result=$result.'<br>Подключение точке прохода id_dev= '.Arr::get($key, 'ID_DEV').' контроллер '.iconv('windows-1251','UTF-8', Arr::get($key, 'NAME')).' произошло неудачно. Причина: '.$dev->errDesc;				
+									// P0: имя контроллера приходит из БД, поэтому экранируем его в сообщении
+									$result=$result.'<br>Подключение точке прохода id_dev= '.(int)Arr::get($key, 'ID_DEV').' контроллер '.htmlspecialchars(iconv('windows-1251','UTF-8', Arr::get($key, 'NAME')), ENT_QUOTES, 'UTF-8').' произошло неудачно. Причина: '.$dev->errDesc;				
 				
 								
 								
@@ -517,9 +537,9 @@ class Controller_Dev extends Controller_Template {
 		
 		if (Arr::get($_POST, 'checkkey'))//8.07.2020 вычитать данные из контроллера по списку из БД, найти карты, которых нет в контроллере, и выставить их на запись в контроллеры
 		{
-				echo Debug::vars('205', $_POST ); exit;
+				if(empty($id_dev)) $this->redirect('errorpage?err='.__('no device id for checkkey'));
 				//$res=Model::Factory('Check')->checkKey($id_dev, NULL);
-				$res=Model::Factory('Device')->readkey_arr(Arr::get($post, 'id_dev'));
+				$res=Model::Factory('Device')->readkey_arr($id_dev);
 		}
 		
 		$resultMessages=array();

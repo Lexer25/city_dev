@@ -13,6 +13,13 @@ if (!function_exists('cp2utf')) {
     }
 }
 
+// P0: то же, но с экранированием для вывода в HTML (данные приходят из БД)
+if (!function_exists('cp2utf_h')) {
+    function cp2utf_h($s) {
+        return htmlspecialchars(cp2utf($s), ENT_QUOTES, 'UTF-8');
+    }
+}
+
 // === Права администратора (безопасное определение) ===
 $isAdmin      = !empty($is_admin);
 $navClass     = $isAdmin
@@ -42,6 +49,8 @@ $(document).ready(function() {
 
     $table.tablesorter({
         theme: 'blue',
+        // В шапке две строки: сортировка и фильтры идут по первой (вторая - номера колонок)
+        selectorHeaders: 'thead tr:first-child th',
         headers: {
             0:  { sorter: false, filter: false },
             19: { sorter: false, filter: false }
@@ -116,9 +125,10 @@ function exportTableToCSV(filename) {
         return;
     }
 
-    // Заголовки (пропускаем 0-ю колонку с чекбоксом)
+    // Заголовки (пропускаем 0-ю колонку с чекбоксом).
+    // В шапке две строки, поэтому берём только первую - строку с названиями колонок, а не строку с номерами.
     var headers = [];
-    var ths = table.querySelectorAll('thead tr th');
+    var ths = table.querySelectorAll('thead tr:first-child th');
     ths.forEach(function(th, i) {
         if (i === 0) return; // чекбокс
         var text = th.textContent.trim().replace(/\s+/g, ' ');
@@ -197,6 +207,8 @@ function exportTableToCSV(filename) {
         <div id="export-button-place"></div>
 
         <?php echo Form::open('Dev/device_control', array('method' => 'post')); ?>
+        <?php // P0: CSRF-токен, проверяется в Controller_Dev::action_device_control() ?>
+        <?php echo Form::hidden('csrf_token', Security::token()); ?>
 
         <table id="tablesorter" class="table table-striped table-hover table-condensed tablesorter">
             <thead align="center">
@@ -228,6 +240,12 @@ function exportTableToCSV(filename) {
                     echo '<th>' . __('timestamp', array('title' => 'Дата получения информации')) . '</th>';
                     echo '<th class="filter-false sorter-false">' . __('collectAlarm') . '</th>';
                     ?>
+                </tr>
+                <?php // вторая строка шапки - номера колонок, начиная с 1 (22 колонки: чекбокс + 21 заголовок выше) ?>
+                <tr class="info" style="font-size: 10px">
+                    <?php for ($col = 1; $col <= 22; $col++): ?>
+                        <th class="text-center"><?php echo $col; ?></th>
+                    <?php endfor; ?>
                 </tr>
             </thead>
             <tbody>
@@ -261,11 +279,11 @@ function exportTableToCSV(filename) {
                 echo '</label></td>';
 
                 // Колонка 1 — SERVER_NAME
-                echo '<td>' . cp2utf($deviceInfo->servername) . '</td>';
+                echo '<td>' . cp2utf_h($deviceInfo->servername) . '</td>';
 
                 // Колонка 2 — DEVICE_NAME
                 echo '<td>' . (int)$deviceInfo->parentid . ' '
-                    . HTML::anchor('devices/edit/' . (int)$deviceInfo->parentid, cp2utf($deviceInfo->parentname))
+                    . HTML::anchor('devices/edit/' . (int)$deviceInfo->parentid, cp2utf_h($deviceInfo->parentname))
                     . '</td>';
 
                 // Колонка 3 — DEVICE_IsActive
@@ -282,7 +300,7 @@ function exportTableToCSV(filename) {
                 echo '</td>';
 
                 // Колонка 4 — DEVICE_TYPE
-                echo '<td>' . cp2utf($deviceInfo->devtypename) . '</td>';
+                echo '<td>' . cp2utf_h($deviceInfo->devtypename) . '</td>';
 
                 // Колонка 5 — IP
                 echo '<td>';
@@ -349,7 +367,7 @@ function exportTableToCSV(filename) {
                 // Колонка 9 — DOOR_NAME
                 echo '<td>';
                 echo (int)$deviceInfo->id_dev . ' '
-                    . HTML::anchor('door/doorInfo/' . (int)$deviceInfo->id_dev, cp2utf($deviceInfo->name));
+                    . HTML::anchor('door/doorInfo/' . (int)$deviceInfo->id_dev, cp2utf_h($deviceInfo->name));
                 echo '</td>';
 
                 // Колонка 10 — on_plane
